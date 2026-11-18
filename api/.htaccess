@@ -1,0 +1,12 @@
+# ส่งทุก request เข้า index.php (รวมถึงไฟล์ใน src ซึ่งเข้าถึงตรงไม่ได้)
+Options -Indexes
+RewriteEngine On
+RewriteRule ^index\.php$ - [L]
+RewriteRule ^ index.php [L]
+
+# อัปโหลดสลิปได้ถึง 10 MB (สำหรับ mod_php ส่วน PHP-FPM/CGI อ่านจาก .user.ini)
+<IfModule mod_php.c>
+  php_value upload_max_filesize 12M
+  php_value post_max_size 12M
+  php_flag display_errors off
+</IfModule>

@@ -1,0 +1,17 @@
+# ข้อมูลลับและข้อมูลจริงบนเครื่อง ห้ามขึ้น GitHub
+private/config.php
+private/logs/
+private/sessions/*
+!private/sessions/.gitkeep
+private/uploads/slips/*
+!private/uploads/slips/.gitkeep
+
+# ไฟล์ dump ฐานข้อมูลจริง (มีอีเมล/รหัสผ่านผู้ใช้)
+sql/expense_tracker.sql
+
+# ไฟล์สำรองและไฟล์ชั่วคราว
+_backup-green-theme/
+Claude outputs/
+*.zip
+.DS_Store
+Thumbs.db

@@ -1,0 +1,51 @@
+Options -Indexes
+DirectoryIndex index.php index.html
+
+RewriteEngine On
+
+# บังคับ HTTPS (ยกเว้นตอนพัฒนาในเครื่อง)
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# ไฟล์ของโปรแกรมที่ไม่ควรเปิดตรงๆ
+RewriteRule ^index\.html$ index.php [L]
+
+# เอกสารและไฟล์สำรองไม่ใช่ส่วนของหน้าเว็บ ห้ามเปิดจากภายนอก
+RewriteRule \.md$ - [F,L,NC]
+RewriteRule ^_backup - [F,L,NC]
+
+# ปิดโฟลเดอร์ private กรณีที่จำเป็นต้องวางไว้ใน public_html
+RewriteRule ^private(/|$) - [F,L]
+
+# API มี .htaccess ของตัวเอง
+RewriteRule ^api(/|$) - [L]
+
+# หน้าเว็บแบบ SPA: path ที่ไม่ใช่ไฟล์จริงให้ส่ง index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
+
+<IfModule mod_headers.c>
+  # ไม่บอกเวอร์ชัน PHP และให้เบราว์เซอร์จำว่าเว็บนี้ใช้ HTTPS เท่านั้น (มีผลเฉพาะเมื่อเปิดผ่าน HTTPS)
+  Header always unset X-Powered-By
+  Header unset X-Powered-By
+  Header always set Strict-Transport-Security "max-age=31536000" "expr=%{HTTPS} == 'on' || %{HTTP:X-Forwarded-Proto} == 'https'"
+  Header always set X-Content-Type-Options "nosniff" "expr=%{REQUEST_URI} !~ m#/api/#"
+  Header always set Referrer-Policy "same-origin" "expr=%{REQUEST_URI} !~ m#/api/#"
+  Header always set X-Frame-Options "DENY" "expr=%{REQUEST_URI} !~ m#/api/#"
+  Header always set Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' data: blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" "expr=%{REQUEST_URI} !~ m#/api/#"
+
+  # ยกเว้น api/index.php: API ตั้ง Cache-Control เอง (no-store สำหรับข้อมูลการเงิน, private สำหรับรูปสลิป)
+  <FilesMatch "(index\.php|sw\.js|manifest\.webmanifest)$">
+    Header set Cache-Control "no-cache" "expr=%{REQUEST_URI} !~ m#/api/#"
+  </FilesMatch>
+  <If "%{REQUEST_URI} =~ m#/assets/#">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </If>
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+</IfModule>

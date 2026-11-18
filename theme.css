@@ -1,0 +1,235 @@
+/* ============================================================
+   Expense Tracker — ธีม "Trust Blue" (ไฟล์ทับค่าสีของธีมเดิม)
+   โหลดต่อจาก assets/index-*.css  ·  ลบแท็ก <link> ของไฟล์นี้ใน index.html = กลับไปธีมเขียวเดิม
+   หลักคิด: น้ำเงิน = แบรนด์/ปุ่ม/เมนู · เขียว = รายรับเท่านั้น · ส้มแดง = รายจ่าย · ม่วง = ยอดคงเหลือ
+   ============================================================ */
+
+:root,
+[data-bs-theme=light] {
+  /* พื้นและเส้น: เทาอมฟ้า (slate) แทนเทาอมเขียว */
+  --page: #F4F6FB;
+  --card: #FFFFFF;
+  --card-2: #EEF2F8;
+  --line: #E2E8F0;
+  --line-strong: #CBD5E1;
+  --grid: #E9EEF5;
+
+  /* ตัวอักษร: ink-3 เข้มขึ้นให้ผ่าน 4.5:1 (ของเดิม #8A9992 ได้ราว 2.9:1) */
+  --ink: #0F172A;
+  --ink-2: #475569;
+  --ink-3: #5B6B82;
+
+  /* สีหลัก */
+  --primary: #1D4ED8;
+  --primary-ink: #1E40AF;
+  --primary-hover: #1A43BF;
+  --primary-soft: #E7EEFD;
+
+  /* สีความหมาย */
+  --income: #059669;
+  --income-ink: #047857;
+  --income-bg: #E5F6EE;
+  --expense: #E5603F;
+  --expense-ink: #B9411F;
+  --expense-bg: #FDEEE8;
+  --balance: #7C3AED;
+  --balance-ink: #6D28D9;
+  --balance-bg: #F1EBFE;
+
+  /* แบรนด์และการ์ดยอดคงเหลือ */
+  --brand-from: #0B1B46;
+  --brand-to: #1D4ED8;
+  --hero-bg:
+    radial-gradient(120% 140% at 100% 0%, rgba(96, 165, 250, .34) 0%, transparent 46%),
+    radial-gradient(90% 120% at 0% 100%, rgba(255, 255, 255, .06) 0%, transparent 50%),
+    linear-gradient(150deg, #0B1B46 0%, #14318A 58%, #1D4ED8 100%);
+  --gradient-page: radial-gradient(1100px 520px at 100% -10%, rgba(29, 78, 216, .07), transparent 70%);
+  --gradient-primary: linear-gradient(180deg, #2A5CE6, #1D4ED8);
+  --gradient-soft: linear-gradient(160deg, #F1F5FD, #FFFFFF);
+
+  /* เงาโทนกรมท่า */
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, .05), 0 1px 1px rgba(15, 23, 42, .03);
+  --shadow-2: 0 1px 2px rgba(15, 23, 42, .05), 0 8px 20px -10px rgba(15, 23, 42, .14);
+  --shadow-3: 0 2px 4px rgba(15, 23, 42, .06), 0 18px 36px -14px rgba(15, 23, 42, .22);
+  --shadow-4: 0 4px 10px rgba(15, 23, 42, .07), 0 32px 72px -20px rgba(15, 23, 42, .36);
+  --shadow-primary: 0 1px 0 rgba(255, 255, 255, .16) inset, 0 8px 18px -8px rgba(29, 78, 216, .55);
+
+  --skeleton: #E9EEF5;
+  --skeleton-hi: #F7F9FC;
+  --glass: rgba(244, 246, 251, .78);
+  --scroll-thumb: rgba(15, 23, 42, .22);
+  --scroll-thumb-hover: rgba(15, 23, 42, .4);
+
+  /* ตัวแปรของ Bootstrap ที่ฝังสีเขียวไว้ */
+  --bs-primary: #1D4ED8;
+  --bs-primary-rgb: 29, 78, 216;
+  --bs-link-color: #1D4ED8;
+  --bs-link-color-rgb: 29, 78, 216;
+  --bs-link-hover-color: #1E40AF;
+  --bs-link-hover-color-rgb: 30, 64, 175;
+  --bs-primary-bg-subtle: #DCE6FB;
+  --bs-primary-border-subtle: #A9C0F5;
+  --bs-primary-text-emphasis: #132F86;
+  --bs-success: #059669;
+  --bs-success-rgb: 5, 150, 105;
+  --bs-form-valid-color: #047857;
+  --bs-form-valid-border-color: #059669;
+  --bs-info: #7C3AED;
+  --bs-info-rgb: 124, 58, 237;
+  --bs-focus-ring-color: rgba(29, 78, 216, .28);
+}
+
+[data-bs-theme=dark] {
+  --page: #0A0F1C;
+  --card: #111829;
+  --card-2: #172033;
+  --line: #1F2A40;
+  --line-strong: #2C3A55;
+  --grid: #1A2438;
+
+  --ink: #E6EBF5;
+  --ink-2: #9FADC4;
+  --ink-3: #8090AB;
+
+  --primary: #6396F7;
+  --primary-ink: #93B6FB;
+  --primary-hover: #7BA7F9;
+  --primary-soft: #16254A;
+
+  --income: #34C788;
+  --income-ink: #5CD9A1;
+  --income-bg: #0F2A22;
+  --expense: #FF7A57;
+  --expense-ink: #FF9677;
+  --expense-bg: #321A14;
+  --balance: #A78BFA;
+  --balance-ink: #C4B5FD;
+  --balance-bg: #251C47;
+
+  --brand-from: #0A1636;
+  --brand-to: #1B3FAE;
+  --hero-bg:
+    radial-gradient(120% 140% at 100% 0%, rgba(96, 165, 250, .26) 0%, transparent 46%),
+    linear-gradient(150deg, #0A1636 0%, #122A75 60%, #1B3FAE 100%);
+  --gradient-page: radial-gradient(1100px 520px at 100% -10%, rgba(99, 150, 247, .08), transparent 70%);
+  --gradient-primary: linear-gradient(180deg, #74A2F9, #5B8DF2);
+  --gradient-soft: linear-gradient(160deg, #141F38, #111829);
+
+  --shadow-primary: 0 1px 0 rgba(255, 255, 255, .12) inset, 0 8px 20px -8px rgba(99, 150, 247, .45);
+
+  --skeleton: #182237;
+  --skeleton-hi: #1F2A40;
+  --glass: rgba(10, 15, 28, .74);
+  --scroll-thumb: rgba(159, 173, 196, .25);
+  --scroll-thumb-hover: rgba(159, 173, 196, .45);
+
+  --bs-primary: #6396F7;
+  --bs-primary-rgb: 99, 150, 247;
+  --bs-link-color: #93B6FB;
+  --bs-link-color-rgb: 147, 182, 251;
+  --bs-link-hover-color: #B4CCFC;
+  --bs-link-hover-color-rgb: 180, 204, 252;
+  --bs-primary-bg-subtle: #0E1A3A;
+  --bs-primary-border-subtle: #1C3580;
+  --bs-primary-text-emphasis: #93B6FB;
+  --bs-success: #34C788;
+  --bs-success-rgb: 52, 199, 136;
+  --bs-info: #A78BFA;
+  --bs-info-rgb: 167, 139, 250;
+  --bs-focus-ring-color: rgba(99, 150, 247, .35);
+}
+
+/* ---------- จุดที่ไฟล์เดิมฝังสีเขียวไว้ตรงๆ ---------- */
+
+/* ปุ่มของ Bootstrap */
+.btn-outline-primary {
+  --bs-btn-color: var(--primary-ink);
+  --bs-btn-border-color: var(--primary);
+  --bs-btn-hover-bg: var(--primary);
+  --bs-btn-hover-border-color: var(--primary);
+  --bs-btn-active-bg: var(--primary);
+  --bs-btn-active-border-color: var(--primary);
+  --bs-btn-disabled-color: var(--primary);
+  --bs-btn-disabled-border-color: var(--primary);
+}
+.btn-success {
+  --bs-btn-bg: #047857;
+  --bs-btn-border-color: #047857;
+  --bs-btn-hover-bg: #036449;
+  --bs-btn-hover-border-color: #036449;
+  --bs-btn-active-bg: #036449;
+  --bs-btn-active-border-color: #036449;
+  --bs-btn-disabled-bg: #047857;
+  --bs-btn-disabled-border-color: #047857;
+}
+.btn-outline-success {
+  --bs-btn-color: var(--income-ink);
+  --bs-btn-border-color: var(--income);
+  --bs-btn-hover-bg: #047857;
+  --bs-btn-hover-border-color: #047857;
+  --bs-btn-active-bg: #047857;
+  --bs-btn-active-border-color: #047857;
+  --bs-btn-disabled-color: var(--income);
+  --bs-btn-disabled-border-color: var(--income);
+}
+.btn-info {
+  --bs-btn-bg: var(--balance);
+  --bs-btn-border-color: var(--balance);
+  --bs-btn-disabled-bg: var(--balance);
+  --bs-btn-disabled-border-color: var(--balance);
+}
+.btn-outline-info {
+  --bs-btn-color: var(--balance-ink);
+  --bs-btn-border-color: var(--balance);
+  --bs-btn-hover-bg: var(--balance);
+  --bs-btn-hover-border-color: var(--balance);
+  --bs-btn-active-bg: var(--balance);
+  --bs-btn-active-border-color: var(--balance);
+}
+[data-bs-theme=dark] .btn-primary {
+  --bs-btn-color: #071230;
+  --bs-btn-hover-color: #071230;
+  --bs-btn-active-color: #071230;
+  --bs-btn-disabled-color: #071230;
+}
+
+/* เมนู แท็บ แถบความคืบหน้า */
+.dropdown-menu,
+.dropdown-menu-dark { --bs-dropdown-link-active-bg: var(--primary); }
+.nav-pills { --bs-nav-pills-link-active-bg: var(--primary); }
+.progress,
+.progress-stacked { --bs-progress-bar-bg: var(--primary); }
+.list-group {
+  --bs-list-group-active-bg: var(--primary);
+  --bs-list-group-active-border-color: var(--primary);
+}
+
+/* ช่องกรอก: วงโฟกัสชัดขึ้น (ขอบ 3:1 ขึ้นไป) */
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 .25rem var(--bs-focus-ring-color);
+}
+.nav-link:focus-visible { box-shadow: 0 0 0 .25rem var(--bs-focus-ring-color); }
+.form-check-input:checked,
+.form-check-input[type=checkbox]:indeterminate {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+.form-range::-webkit-slider-thumb { background-color: var(--primary); }
+.form-range::-moz-range-thumb { background-color: var(--primary); }
+.form-range::-webkit-slider-thumb:active { background-color: var(--primary-hover); }
+.form-range::-moz-range-thumb:active { background-color: var(--primary-hover); }
+.form-range:focus::-webkit-slider-thumb { box-shadow: 0 0 0 1px var(--page), 0 0 0 .25rem var(--bs-focus-ring-color); }
+.form-range:focus::-moz-range-thumb { box-shadow: 0 0 0 1px var(--page), 0 0 0 .25rem var(--bs-focus-ring-color); }
+
+/* ปุ่ม + โลโก้ การ์ดยอดคงเหลือ: เงาเปลี่ยนจากเขียวเป็นน้ำเงิน */
+.fab { box-shadow: 0 14px 28px -10px rgba(29, 78, 216, .7), 0 0 0 5px var(--page); }
+[data-bs-theme=dark] .fab { color: #071230; box-shadow: 0 14px 28px -10px rgba(99, 150, 247, .55), 0 0 0 5px var(--page); }
+.brand-mark { box-shadow: 0 6px 14px -6px rgba(11, 27, 70, .6), inset 0 1px rgba(255, 255, 255, .15); }
+.hero { box-shadow: 0 1px rgba(255, 255, 255, .08) inset, 0 20px 44px -22px rgba(11, 27, 70, .75); }
+
+/* Toast: ไอคอนสำเร็จยังเป็นเขียว (ความหมาย = สำเร็จ) ใช้ค่ารายรับชุดใหม่ */
+.toast-icon { background: rgba(52, 199, 136, .18); color: #5CD9A1; }
+[data-bs-theme=dark] .toast-card .toast-icon { background: rgba(4, 120, 87, .14); color: #047857; }
