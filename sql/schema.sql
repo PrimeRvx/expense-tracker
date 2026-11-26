@@ -7,7 +7,6 @@ CREATE TABLE users (
   email VARCHAR(190) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   display_name VARCHAR(100) NOT NULL DEFAULT '',
-  role ENUM('user','admin') NOT NULL DEFAULT 'user',   -- บัญชีแรกที่สมัครเป็น admin อัตโนมัติ
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -95,17 +94,4 @@ CREATE TABLE budgets (                 -- งบรายเดือนต่�
   UNIQUE KEY uq_budget (user_id, category_id),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE admin_audit (             -- ประวัติการกระทำของผู้ดูแล ไม่ผูก FK เพื่อให้ประวัติอยู่แม้ลบบัญชี
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  admin_id INT UNSIGNED NOT NULL,
-  admin_email VARCHAR(190) NOT NULL,
-  target_user_id INT UNSIGNED NULL,
-  action VARCHAR(40) NOT NULL,
-  detail TEXT NOT NULL,
-  ip VARBINARY(16) NOT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_target (target_user_id, created_at),
-  KEY idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
