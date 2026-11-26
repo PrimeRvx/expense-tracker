@@ -1,5 +1,5 @@
 // แคชเฉพาะไฟล์ static เท่านั้น ข้อมูลการเงินต้องมาจาก API เสมอ
-const CACHE = 'et-static-v5'; // เปลี่ยนเลขทุกครั้งที่ปล่อยเวอร์ชันใหม่ เพื่อล้างแคชเก่าในเครื่องผู้ใช้
+const CACHE = 'et-static-v6'; // เปลี่ยนเลขทุกครั้งที่ปล่อยเวอร์ชันใหม่ เพื่อล้างแคชเก่าในเครื่องผู้ใช้
 const SCOPE = new URL(self.registration.scope);
 const ROOT = SCOPE.pathname; // รองรับการวางแอปในโฟลเดอร์ย่อย
 const SHELL = ['./', 'manifest.webmanifest', 'favicon.svg', 'app-icons/icon-192.png'];
@@ -19,7 +19,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
-  if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith(`${ROOT}api/`)) return;
+  if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith(`${ROOT}api/`)
+    || url.pathname.startsWith(`${ROOT}admin/`)) return; // หน้าผู้ดูแลไม่แคช และไม่ทับเปลือกแอป
 
   // หน้าเว็บ: เอาจากเครือข่ายก่อน ถ้าออฟไลน์ค่อยใช้เปลือกแอปที่แคชไว้
   if (request.mode === 'navigate') {

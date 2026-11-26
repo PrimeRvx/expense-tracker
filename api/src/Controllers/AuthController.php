@@ -29,6 +29,7 @@ final class AuthController
             'user' => $user === null ? null : self::publicUser($user),
             'csrfToken' => Auth::csrfToken(),
             'canRegister' => $user === null ? self::canRegister() : false,
+            'isAdmin' => $user !== null && AdminController::isAdmin((int) $user['id']),
             'otpEnabled' => Mailer::enabled(),
         ]);
     }
@@ -53,9 +54,20 @@ final class AuthController
             Otp::verify($email, 'register', $body['code'] ?? null);
         }
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        $userId = Db::transaction(static function () use ($email, $hash, $name): int {
+        $isFirst = Db::one('SELECT id FROM users LIMIT 1') === null;
+        $userId = Db::transaction(static function () use ($email, $hash, $name, $isFirst): int {
             Db::run('INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)', [$email, $hash, $name]);
             $id = Db::lastId();
+            if ($isFirst) {
+                // บัญชีแรกของระบบคือเจ้าของเว็บ ได้สิทธิ์ผู้ดูแล (ข้ามไปถ้าฐานข้อมูลยังไม่มีคอลัมน์ role)
+                try {
+                    Db::run("UPDATE users SET role = 'admin' WHERE id = ?", [$id]);
+                } catch (PDOException $e) {
+                    if ($e->getCode() !== '42S22') {
+                        throw $e;
+                    }
+                }
+            }
             Seed::categories($id);
             return $id;
         });

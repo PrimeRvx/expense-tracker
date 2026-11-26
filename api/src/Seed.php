@@ -24,4 +24,20 @@ final class Seed
             );
         }
     }
+
+    /** เติมหมวดเริ่มต้นที่หายไป ไม่แตะหมวดที่มีอยู่ @return list<string> ชื่อหมวดที่เพิ่ม */
+    public static function restoreCategories(int $userId): array
+    {
+        $added = [];
+        foreach (self::DEFAULTS as [$name, $type, $icon, $color, $order]) {
+            $n = Db::run(
+                'INSERT IGNORE INTO categories (user_id, name, type, icon, color, sort_order, is_default) VALUES (?, ?, ?, ?, ?, ?, 1)',
+                [$userId, $name, $type, $icon, $color, $order]
+            )->rowCount();
+            if ($n > 0) {
+                $added[] = "{$name} ({$type})";
+            }
+        }
+        return $added;
+    }
 }

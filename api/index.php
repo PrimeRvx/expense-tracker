@@ -80,4 +80,21 @@ $router->add('GET', '/parser-rules', [ParserRuleController::class, 'index']);
 $router->add('POST', '/parser-rules', [ParserRuleController::class, 'store']);
 $router->add('DELETE', '/parser-rules/{id}', [ParserRuleController::class, 'destroy']);
 
+// ผู้ดูแลระบบ (ตรวจสิทธิ์ admin ใน AdminController ทุก endpoint)
+$router->add('GET', '/admin/overview', [AdminController::class, 'overview']);
+$router->add('GET', '/admin/audit', [AdminController::class, 'auditLog']);
+$router->add('GET', '/admin/users', [AdminController::class, 'users']);
+$router->add('GET', '/admin/users/{id}', [AdminController::class, 'user']);
+$router->add('PUT', '/admin/users/{id}', [AdminController::class, 'updateUser']);
+$router->add('DELETE', '/admin/users/{id}', [AdminController::class, 'deleteUser']);
+$router->add('POST', '/admin/users/{id}/unlock', [AdminController::class, 'unlock']);
+$router->add('POST', '/admin/users/{id}/reset-password', [AdminController::class, 'resetPassword']);
+$router->add('POST', '/admin/users/{id}/restore-categories', [AdminController::class, 'restoreCategories']);
+$router->add('POST', '/admin/users/{id}/repair-slips', [AdminController::class, 'repairSlips']);
+$router->add('GET', '/admin/users/{id}/transactions', [AdminController::class, 'transactions']);
+$router->add('PUT', '/admin/transactions/{id}', [AdminController::class, 'updateTransaction']);
+$router->add('DELETE', '/admin/transactions/{id}', [AdminController::class, 'deleteTransaction']);
+$router->add('GET', '/admin/transactions/{id}/slip', [AdminController::class, 'slip']);
+$router->add('PUT', '/admin/categories/{id}', [AdminController::class, 'updateCategory']);
+
 $router->dispatch();
