@@ -25,7 +25,7 @@ final class ParserRuleController
     public static function store(int $userId): void
     {
         $body = Validator::jsonBody();
-        $keyword = mb_strtolower(trim((string) ($body['keyword'] ?? '')));
+        $keyword = mb_strtolower(trim(Validator::str($body['keyword'] ?? null, 'keyword')));
         if ($keyword === '' || mb_strlen($keyword) > 60) {
             throw Validator::fail('keyword', 'คำสำคัญต้องมี 1-60 ตัวอักษร');
         }

@@ -107,15 +107,15 @@ final class CategoryController
     /** @param array<string,mixed> $body @return array{0:string,1:string,2:string} */
     private static function fields(array $body): array
     {
-        $name = trim((string) ($body['name'] ?? ''));
+        $name = trim(Validator::str($body['name'] ?? null, 'name'));
         if ($name === '' || mb_strlen($name) > 60) {
             throw Validator::fail('name', 'ชื่อหมวดต้องมี 1-60 ตัวอักษร');
         }
-        $icon = (string) ($body['icon'] ?? 'more-horizontal');
+        $icon = Validator::str($body['icon'] ?? null, 'icon', 'more-horizontal');
         if (!preg_match('/^[a-z0-9-]{1,40}$/', $icon)) {
             throw Validator::fail('icon', 'ไอคอนไม่ถูกต้อง');
         }
-        $color = (string) ($body['color'] ?? '#B8BFD0');
+        $color = Validator::str($body['color'] ?? null, 'color', '#B8BFD0');
         if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $color)) {
             throw Validator::fail('color', 'สีไม่ถูกต้อง');
         }

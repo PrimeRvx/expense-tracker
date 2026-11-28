@@ -13,8 +13,8 @@ final class Otp
 
     private const LABELS = ['register' => 'สมัครสมาชิก', 'login' => 'เข้าสู่ระบบ', 'reset' => 'ตั้งรหัสผ่านใหม่'];
 
-    /** ติดตั้งตารางให้เองเมื่อมีการขอรหัสครั้งแรก เว็บที่ติดตั้งไว้ก่อนแล้วจึงไม่ต้อง import SQL เพิ่ม */
-    private static function ensureTable(): void
+    /** ติดตั้งตารางให้เองเมื่อพบว่ายังไม่มี (เรียกผ่าน Db::withTable) เว็บที่ติดตั้งไว้ก่อนแล้วจึงไม่ต้อง import SQL เพิ่ม */
+    public static function ensureTable(): void
     {
         Db::run(
             "CREATE TABLE IF NOT EXISTS email_otps (
@@ -56,8 +56,7 @@ final class Otp
     /** ตรวจโควตาและจดการขอไว้ (เรียกเสมอ แม้สุดท้ายจะไม่ส่งอีเมล เพื่อให้คำตอบเหมือนกันทุกกรณี) */
     public static function reserve(string $email, string $purpose, string $ip): void
     {
-        self::ensureTable();
-        Db::run('DELETE FROM email_otps WHERE created_at < (NOW() - INTERVAL 1 DAY)');
+        Db::withTable([self::class, 'ensureTable'], static fn () => Db::run('DELETE FROM email_otps WHERE created_at < (NOW() - INTERVAL 1 DAY)'));
         $row = Db::one(
             'SELECT COALESCE(SUM(email = ?), 0) AS by_email, COALESCE(SUM(ip = ?), 0) AS by_ip,
                     COALESCE(MIN(CASE WHEN email = ? AND purpose = ? THEN TIMESTAMPDIFF(SECOND, created_at, NOW()) END), -1) AS since
@@ -98,16 +97,15 @@ final class Otp
     /** ตรวจรหัส ผ่านแล้วใช้ซ้ำไม่ได้ ไม่ผ่านให้โยนข้อผิดพลาดที่บอกผู้ใช้ได้ */
     public static function verify(string $email, string $purpose, $code): void
     {
-        self::ensureTable();
         $invalid = new ApiError(422, 'otp_invalid', 'รหัสยืนยันไม่ถูกต้องหรือหมดอายุแล้ว กรุณาขอรหัสใหม่', ['field' => 'code']);
         if (!is_string($code) || !preg_match('/^\d{6}$/', $code)) {
             throw $invalid;
         }
-        $row = Db::one(
+        $row = Db::withTable([self::class, 'ensureTable'], static fn () => Db::one(
             'SELECT id, code_hash, tries FROM email_otps
               WHERE email = ? AND purpose = ? AND used = 0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1',
             [$email, $purpose]
-        );
+        ));
         if ($row === null || (int) $row['tries'] >= self::MAX_TRIES) {
             throw $invalid;
         }

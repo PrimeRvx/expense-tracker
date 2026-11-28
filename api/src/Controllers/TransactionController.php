@@ -35,7 +35,7 @@ final class TransactionController
         $where = ['t.user_id = ?'];
         $params = [$userId];
 
-        $q = trim((string) ($_GET['q'] ?? ''));
+        $q = trim(Validator::query('q'));
         if ($q !== '') {
             $like = '%' . str_replace(['|', '%', '_'], ['||', '|%', '|_'], mb_substr($q, 0, 100)) . '%';
             $where[] = "(t.note LIKE ? ESCAPE '|' OR c.name LIKE ? ESCAPE '|')";
@@ -95,7 +95,7 @@ final class TransactionController
     public static function store(int $userId): void
     {
         $body = Validator::jsonBody();
-        $source = (string) ($body['source'] ?? 'manual');
+        $source = Validator::str($body['source'] ?? null, 'source', 'manual');
         if (!in_array($source, ['text', 'slip', 'manual', 'import'], true)) {
             $source = 'manual';
         }

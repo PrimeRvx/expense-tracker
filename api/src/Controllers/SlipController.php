@@ -53,6 +53,11 @@ final class SlipController
             throw new RuntimeException('Cannot store uploaded slip');
         }
         chmod($target, 0640);
+        // ลบพิกัด GPS และข้อมูลแฝงอื่นในรูปก่อนเก็บ (ทำไม่ได้ก็เก็บไฟล์เดิม ไม่ให้อัปโหลดล้ม)
+        if (ImageMeta::strip($target, $mime)) {
+            clearstatcache(true, $target);
+            $size = (int) filesize($target);
+        }
 
         $old = Db::one('SELECT stored_name FROM slips WHERE transaction_id = ? AND user_id = ?', [$id, $userId]);
         try {

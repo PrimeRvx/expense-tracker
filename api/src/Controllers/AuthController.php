@@ -7,6 +7,7 @@ final class AuthController
     private const MAX_PER_EMAIL = 10;      // อีเมลเดียวจากทุกเครื่องรวมกัน (กันการรุมเดาจากหลาย IP)
     private const MAX_PER_IP = 20;         // เครื่องเดียวกับทุกอีเมลรวมกัน (กันการไล่เดาหลายบัญชี)
     private const WINDOW_SECONDS = 900;
+    private const MAX_PASSWORD_CHANGE_FAILS = 5; // ใส่รหัสเดิมผิดในหน้าเปลี่ยนรหัสผ่านได้กี่ครั้งต่อ 15 นาที
 
     private static function canRegister(): bool
     {
@@ -42,7 +43,7 @@ final class AuthController
         $body = Validator::jsonBody();
         $email = self::email($body['email'] ?? null);
         $password = self::password($body['password'] ?? null, 'password');
-        $name = trim((string) ($body['display_name'] ?? ''));
+        $name = trim(Validator::str($body['display_name'] ?? null, 'display_name'));
         if (mb_strlen($name) > 100) {
             throw Validator::fail('display_name', 'ชื่อที่แสดงยาวได้ไม่เกิน 100 ตัวอักษร');
         }
@@ -54,23 +55,42 @@ final class AuthController
             Otp::verify($email, 'register', $body['code'] ?? null);
         }
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        $isFirst = Db::one('SELECT id FROM users LIMIT 1') === null;
-        $userId = Db::transaction(static function () use ($email, $hash, $name, $isFirst): int {
-            Db::run('INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)', [$email, $hash, $name]);
-            $id = Db::lastId();
-            if ($isFirst) {
-                // บัญชีแรกของระบบคือเจ้าของเว็บ ได้สิทธิ์ผู้ดูแล (ข้ามไปถ้าฐานข้อมูลยังไม่มีคอลัมน์ role)
+        // ล็อกการสมัครทีละคน: กันสองคนสมัครพร้อมกันตอนติดตั้งใหม่แล้วได้ admin ทั้งคู่ และกันอีเมลซ้ำชนกัน
+        $locked = (int) (Db::one("SELECT GET_LOCK('expense_tracker_register', 10) AS ok")['ok'] ?? 0) === 1;
+        if (!$locked) {
+            throw new ApiError(503, 'busy', 'ระบบกำลังสมัครสมาชิกให้ผู้ใช้อื่นอยู่ กรุณาลองใหม่อีกครั้ง');
+        }
+        try {
+            $userId = Db::transaction(static function () use ($email, $hash, $name): int {
+                if (Db::one('SELECT id FROM users WHERE email = ?', [$email]) !== null) {
+                    throw new ApiError(409, 'email_taken', 'อีเมลนี้ถูกใช้แล้ว');
+                }
+                $isFirst = Db::one('SELECT id FROM users LIMIT 1') === null;
                 try {
-                    Db::run("UPDATE users SET role = 'admin' WHERE id = ?", [$id]);
+                    Db::run('INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)', [$email, $hash, $name]);
                 } catch (PDOException $e) {
-                    if ($e->getCode() !== '42S22') {
-                        throw $e;
+                    if ($e->getCode() === '23000') {
+                        throw new ApiError(409, 'email_taken', 'อีเมลนี้ถูกใช้แล้ว');
+                    }
+                    throw $e;
+                }
+                $id = Db::lastId();
+                if ($isFirst) {
+                    // บัญชีแรกของระบบคือเจ้าของเว็บ ได้สิทธิ์ผู้ดูแล (ข้ามไปถ้าฐานข้อมูลยังไม่มีคอลัมน์ role)
+                    try {
+                        Db::run("UPDATE users SET role = 'admin' WHERE id = ?", [$id]);
+                    } catch (PDOException $e) {
+                        if ($e->getCode() !== '42S22') {
+                            throw $e;
+                        }
                     }
                 }
-            }
-            Seed::categories($id);
-            return $id;
-        });
+                Seed::categories($id);
+                return $id;
+            });
+        } finally {
+            Db::run("SELECT RELEASE_LOCK('expense_tracker_register')");
+        }
         Auth::signIn($userId, $hash);
         Response::ok([
             'user' => ['id' => $userId, 'email' => $email, 'displayName' => $name],
@@ -81,8 +101,8 @@ final class AuthController
     public static function login(): void
     {
         $body = Validator::jsonBody();
-        $email = strtolower(trim((string) ($body['email'] ?? '')));
-        $password = (string) ($body['password'] ?? '');
+        $email = strtolower(trim(Validator::str($body['email'] ?? null, 'email')));
+        $password = Validator::str($body['password'] ?? null, 'password');
         if ($email === '' || $password === '' || strlen($email) > 190) {
             throw Validator::fail('email', 'กรุณากรอกอีเมลและรหัสผ่าน');
         }
@@ -195,10 +215,23 @@ final class AuthController
     public static function changePassword(int $userId): void
     {
         $body = Validator::jsonBody();
+        $current = Validator::str($body['current_password'] ?? null, 'current_password');
+        // นับการใส่รหัสเดิมผิดแยกจากหน้าเข้าสู่ระบบ (คีย์ chpw:<id>) กันคนที่ได้เครื่องที่ลืมออกจากระบบไปไล่เดารหัส
+        $key = 'chpw:' . $userId;
+        $fails = (int) Db::one(
+            'SELECT COUNT(*) AS n FROM login_attempts WHERE email = ? AND attempted_at >= (NOW() - INTERVAL 15 MINUTE)',
+            [$key]
+        )['n'];
+        if ($fails >= self::MAX_PASSWORD_CHANGE_FAILS) {
+            header('Retry-After: ' . self::WINDOW_SECONDS);
+            throw new ApiError(429, 'too_many_attempts', 'ใส่รหัสผ่านเดิมผิดหลายครั้งเกินไป กรุณารอ 15 นาทีแล้วลองใหม่');
+        }
         $user = Db::one('SELECT password_hash FROM users WHERE id = ?', [$userId]);
-        if ($user === null || !password_verify((string) ($body['current_password'] ?? ''), (string) $user['password_hash'])) {
+        if ($user === null || !password_verify($current, (string) $user['password_hash'])) {
+            Db::run('INSERT INTO login_attempts (email, ip) VALUES (?, ?)', [$key, self::clientIp()]);
             throw new ApiError(422, 'wrong_password', 'รหัสผ่านเดิมไม่ถูกต้อง', ['field' => 'current_password']);
         }
+        Db::run('DELETE FROM login_attempts WHERE email = ?', [$key]);
         $new = self::password($body['new_password'] ?? null, 'new_password');
         $hash = password_hash($new, PASSWORD_DEFAULT);
         Db::run('UPDATE users SET password_hash = ? WHERE id = ?', [$hash, $userId]);
@@ -211,7 +244,7 @@ final class AuthController
     /** @param mixed $value */
     private static function email($value): string
     {
-        $email = strtolower(trim((string) $value));
+        $email = strtolower(trim(Validator::str($value, 'email')));
         if (strlen($email) > 190 || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             throw Validator::fail('email', 'รูปแบบอีเมลไม่ถูกต้อง');
         }

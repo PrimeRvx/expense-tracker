@@ -4,8 +4,8 @@ declare(strict_types=1);
 /** งบประมาณรายเดือนต่อหมวดรายจ่าย ใช้ค่าเดียวกันทุกเดือน */
 final class BudgetController
 {
-    /** ติดตั้งตารางให้เองถ้ายังไม่มี (ผู้ที่อัปเดตจากเวอร์ชันก่อนจะไม่ต้อง import SQL เพิ่ม) */
-    private static function ensureTable(): void
+    /** ติดตั้งตารางให้เองเมื่อพบว่ายังไม่มี (เรียกผ่าน Db::withTable) ผู้ที่อัปเดตจากเวอร์ชันก่อนจะไม่ต้อง import SQL เพิ่ม */
+    public static function ensureTable(): void
     {
         Db::run(
             'CREATE TABLE IF NOT EXISTS budgets (
@@ -23,18 +23,16 @@ final class BudgetController
 
     public static function index(int $userId): void
     {
-        self::ensureTable();
         $month = Validator::month($_GET['month'] ?? date('Y-m'));
-        $start = $month . '-01 00:00:00';
-        $next = date('Y-m-01 00:00:00', strtotime($start . ' +1 month'));
-        Response::ok(self::listFor($userId, $start, $next));
+        Response::ok(Db::withTable([self::class, 'ensureTable'], static fn () => self::listForMonth($userId, $month)));
     }
 
     /** body: {"items":[{"category_id":5,"amount":"10000"}, ...]} จำนวน 0 หรือว่าง = ยกเลิกงบของหมวดนั้น */
     public static function save(int $userId): void
     {
-        self::ensureTable();
         $body = Validator::jsonBody();
+        // คืนผลของเดือนที่หน้าจอกำลังดูอยู่ (ส่งมาทาง ?month= หรือ body.month) ไม่ใช่เดือนปัจจุบันเสมอ
+        $month = Validator::month($_GET['month'] ?? $body['month'] ?? date('Y-m'));
         $items = $body['items'] ?? null;
         if (!is_array($items) || count($items) > 200) {
             throw Validator::fail('items', 'ข้อมูลงบประมาณไม่ถูกต้อง');
@@ -43,7 +41,7 @@ final class BudgetController
         foreach (Db::all("SELECT id FROM categories WHERE user_id = ? AND type = 'รายจ่าย'", [$userId]) as $c) {
             $categories[(int) $c['id']] = true;
         }
-        Db::transaction(static function () use ($items, $userId, $categories): void {
+        Db::withTable([self::class, 'ensureTable'], static fn () => Db::transaction(static function () use ($items, $userId, $categories): void {
             foreach ($items as $item) {
                 if (!is_array($item)) {
                     throw Validator::fail('items', 'ข้อมูลงบประมาณไม่ถูกต้อง');
@@ -63,10 +61,15 @@ final class BudgetController
                     [$userId, $categoryId, $amount]
                 );
             }
-        });
-        $month = date('Y-m');
+        }));
+        Response::ok(self::listForMonth($userId, $month));
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    private static function listForMonth(int $userId, string $month): array
+    {
         $start = $month . '-01 00:00:00';
-        Response::ok(self::listFor($userId, $start, date('Y-m-01 00:00:00', strtotime($start . ' +1 month'))));
+        return self::listFor($userId, $start, date('Y-m-01 00:00:00', strtotime($start . ' +1 month')));
     }
 
     /** @return array<int,array<string,mixed>> */

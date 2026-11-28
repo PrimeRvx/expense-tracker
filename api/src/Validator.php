@@ -100,6 +100,31 @@ final class Validator
         throw self::fail('year', 'ปีไม่ถูกต้อง');
     }
 
+    /**
+     * รับค่าข้อความจาก JSON: null/ไม่ส่ง = ค่าเริ่มต้น, ตัวเลขแปลงเป็นข้อความ
+     * array/object/boolean ตอบ 422 แทนการปล่อยให้ (string) เกิด warning แล้วกลายเป็น 500
+     * @param mixed $value
+     */
+    public static function str($value, string $field, string $default = ''): string
+    {
+        if ($value === null) {
+            return $default;
+        }
+        if (is_string($value)) {
+            return $value;
+        }
+        if (is_int($value) || is_float($value)) {
+            return (string) $value;
+        }
+        throw self::fail($field, 'รูปแบบข้อมูลไม่ถูกต้อง');
+    }
+
+    /** อ่านค่าข้อความจาก query string (?q[]=x จะได้ array ซึ่งตอบ 422) */
+    public static function query(string $key, string $default = ''): string
+    {
+        return self::str($_GET[$key] ?? null, $key, $default);
+    }
+
     /** @param mixed $value */
     public static function positiveInt($value, string $field): int
     {

@@ -3,8 +3,15 @@ declare(strict_types=1);
 
 final class Auth
 {
-    private const LIFETIME = 2592000; // 30 วันแบบ sliding
+    private const DEFAULT_DAYS = 7; // อายุ session แบบ sliding (ตั้งใน config ได้ด้วย SESSION_DAYS)
     private const COOKIE = 'et_sid';
+
+    /** อายุ session เป็นวินาที: นับจากการใช้งานครั้งล่าสุด ค่าเริ่มต้น 7 วัน (1-30 วัน) */
+    private static function lifetime(): int
+    {
+        $days = (int) Config::get('SESSION_DAYS', self::DEFAULT_DAYS);
+        return max(1, min(30, $days)) * 86400;
+    }
 
     public static function boot(): void
     {
@@ -12,19 +19,19 @@ final class Auth
         if (!is_dir($dir)) {
             @mkdir($dir, 0700, true);
         }
-        // ใช้โฟลเดอร์ session ของแอปเอง เพราะโฟลเดอร์รวมบน shared hosting อาจถูกล้างก่อน 30 วัน
+        // ใช้โฟลเดอร์ session ของแอปเอง เพราะโฟลเดอร์รวมบน shared hosting อาจถูกล้างก่อนหมดอายุ
         if (is_dir($dir) && is_writable($dir)) {
             session_save_path($dir);
             ini_set('session.gc_probability', '1');
             ini_set('session.gc_divisor', '200');
         }
-        ini_set('session.gc_maxlifetime', (string) self::LIFETIME);
+        ini_set('session.gc_maxlifetime', (string) self::lifetime());
         ini_set('session.use_strict_mode', '1');
         ini_set('session.use_only_cookies', '1');
         ini_set('session.cache_limiter', '');
         session_name(self::COOKIE);
         session_set_cookie_params([
-            'lifetime' => self::LIFETIME,
+            'lifetime' => self::lifetime(),
             'path' => '/',
             'secure' => (bool) Config::get('COOKIE_SECURE', true),
             'httponly' => true,
@@ -33,7 +40,7 @@ final class Auth
         session_start();
 
         $last = (int) ($_SESSION['last_seen'] ?? 0);
-        if (isset($_SESSION['uid']) && $last > 0 && $last + self::LIFETIME < time()) {
+        if (isset($_SESSION['uid']) && $last > 0 && $last + self::lifetime() < time()) {
             $_SESSION = [];
             session_regenerate_id(true);
         }
@@ -43,7 +50,7 @@ final class Auth
         if (isset($_SESSION['uid'])) {
             $_SESSION['last_seen'] = time();
             // ต่ออายุ cookie ทุกครั้งที่ใช้งาน (PHP ไม่ส่ง cookie ซ้ำให้เอง)
-            setcookie(self::COOKIE, session_id(), self::cookieParams(time() + self::LIFETIME));
+            setcookie(self::COOKIE, session_id(), self::cookieParams(time() + self::lifetime()));
         }
     }
 
@@ -79,8 +86,8 @@ final class Auth
             return null;
         }
         $user = Db::one('SELECT id, email, display_name, password_hash FROM users WHERE id = ?', [$uid]);
-        // เปลี่ยนรหัสผ่านแล้ว session บนอุปกรณ์อื่นจะใช้ต่อไม่ได้
-        if ($user === null || !hash_equals((string) ($_SESSION['pv'] ?? ''), self::passwordVersion((string) $user['password_hash']))) {
+        // เปลี่ยนรหัสผ่านหรืออีเมลแล้ว session บนอุปกรณ์อื่นจะใช้ต่อไม่ได้
+        if ($user === null || !hash_equals((string) ($_SESSION['pv'] ?? ''), self::passwordVersion((string) $user['password_hash'], (string) $user['email']))) {
             self::destroy();
             return null;
         }
@@ -102,8 +109,9 @@ final class Auth
     public static function signIn(int $userId, string $passwordHash): void
     {
         session_regenerate_id(true);
+        $email = (string) (Db::one('SELECT email FROM users WHERE id = ?', [$userId])['email'] ?? '');
         $_SESSION['uid'] = $userId;
-        $_SESSION['pv'] = self::passwordVersion($passwordHash);
+        $_SESSION['pv'] = self::passwordVersion($passwordHash, $email);
         $_SESSION['last_seen'] = time();
         $_SESSION['csrf'] = bin2hex(random_bytes(32));
     }
@@ -115,8 +123,9 @@ final class Auth
         $_SESSION['csrf'] = bin2hex(random_bytes(32));
     }
 
-    private static function passwordVersion(string $hash): string
+    /** ลายนิ้วมือของบัญชี: เปลี่ยนเมื่อรหัสผ่านหรืออีเมลเปลี่ยน ทำให้ session เก่าทุกเครื่องหลุด */
+    private static function passwordVersion(string $hash, string $email): string
     {
-        return hash('sha256', $hash);
+        return hash('sha256', $hash . "\n" . strtolower($email));
     }
 }

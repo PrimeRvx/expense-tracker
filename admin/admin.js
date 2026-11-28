@@ -5,8 +5,9 @@ const API = '../api';
 const state = { csrf: '', me: null, q: '', page: 1, userId: null, tab: 'help', detail: null, txFilter: {} };
 const $ = (id) => document.getElementById(id);
 
-const money = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtMoney = (v) => money.format(Number(v || 0));
+// รูปแบบเดียวกับแอปหลัก: 1,234 ฿ หรือ 1,234.50 ฿ (แสดงสตางค์เฉพาะเมื่อมี)
+const money = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const fmtMoney = (v) => `${money.format(Number(v || 0))} ฿`;
 const fmtDate = (s, time = true) => {
   if (!s) return '–';
   const d = new Date(String(s).replace(' ', 'T'));
@@ -519,7 +520,7 @@ function editTx(t, el) {
 }
 
 function deleteTx(t, el) {
-  confirmDialog('ลบรายการ', `ลบ${t.type} ${fmtMoney(t.amount)} บาท (${t.category.name}) วันที่ ${fmtDate(t.occurredAt)}${t.hasSlip ? ' พร้อมรูปสลิป' : ''} ข้อมูลรายการจะถูกเก็บไว้ในประวัติการแก้ไข`, 'ลบรายการ', async () => {
+  confirmDialog('ลบรายการ', `ลบ${t.type} ${fmtMoney(t.amount)} (${t.category.name}) วันที่ ${fmtDate(t.occurredAt)}${t.hasSlip ? ' พร้อมรูปสลิป' : ''} ข้อมูลรายการจะถูกเก็บไว้ในประวัติการแก้ไข`, 'ลบรายการ', async () => {
     await api('DELETE', `/admin/transactions/${t.id}`);
     toast('ลบรายการแล้ว');
     renderTx(el);

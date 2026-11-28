@@ -2,7 +2,7 @@
 -- รองรับ MySQL 5.7+ / MariaDB 10.4+
 SET NAMES utf8mb4;
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(190) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE users (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NOT NULL,
   name VARCHAR(60) NOT NULL,
@@ -21,10 +21,11 @@ CREATE TABLE categories (
   sort_order INT NOT NULL DEFAULT 0,
   is_default TINYINT(1) NOT NULL DEFAULT 0,
   UNIQUE KEY uq_cat (user_id, type, name),
+  UNIQUE KEY uq_cat_owner (id, user_id, type),   -- ให้ transactions อ้างถึงหมวดพร้อมเจ้าของและชนิดได้
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NOT NULL,
   category_id INT UNSIGNED NOT NULL,
@@ -37,11 +38,14 @@ CREATE TABLE transactions (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_user_date (user_id, occurred_at),
   KEY idx_user_type_date (user_id, type, occurred_at),
+  KEY idx_user_cat_date (user_id, category_id, occurred_at),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
+  -- หมวดต้องเป็นของผู้ใช้คนเดียวกันและชนิดเดียวกับรายการ (ฐานข้อมูลบังคับเอง ไม่พึ่งโค้ดอย่างเดียว)
+  CONSTRAINT fk_tx_cat_owner FOREIGN KEY (category_id, user_id, type) REFERENCES categories(id, user_id, type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE slips (
+CREATE TABLE IF NOT EXISTS slips (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NOT NULL,
   transaction_id BIGINT UNSIGNED NOT NULL UNIQUE,
@@ -53,7 +57,7 @@ CREATE TABLE slips (
   FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE parser_rules (            -- เรียนรู้จากการแก้หมวดของผู้ใช้ (keyword → หมวด)
+CREATE TABLE IF NOT EXISTS parser_rules (            -- เรียนรู้จากการแก้หมวดของผู้ใช้ (keyword → หมวด)
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NOT NULL,
   keyword VARCHAR(60) NOT NULL,
@@ -63,7 +67,7 @@ CREATE TABLE parser_rules (            -- เรียนรู้จากก�
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE login_attempts (
+CREATE TABLE IF NOT EXISTS login_attempts (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(190) NOT NULL,
   ip VARBINARY(16) NOT NULL,
@@ -72,7 +76,7 @@ CREATE TABLE login_attempts (
   KEY idx_email_time (email, attempted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE email_otps (              -- รหัสยืนยันทางอีเมล เก็บเฉพาะค่า hash หมดอายุใน 10 นาที
+CREATE TABLE IF NOT EXISTS email_otps (              -- รหัสยืนยันทางอีเมล เก็บเฉพาะค่า hash หมดอายุใน 10 นาที
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(190) NOT NULL,
   purpose ENUM('register','login','reset') NOT NULL,
@@ -86,7 +90,7 @@ CREATE TABLE email_otps (              -- รหัสยืนยันทา�
   KEY idx_ip_time (ip, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE budgets (                 -- งบรายเดือนต่อหมวดรายจ่าย (ใช้ค่าเดียวกันทุกเดือน)
+CREATE TABLE IF NOT EXISTS budgets (                 -- งบรายเดือนต่อหมวดรายจ่าย (ใช้ค่าเดียวกันทุกเดือน)
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NOT NULL,
   category_id INT UNSIGNED NOT NULL,
@@ -97,7 +101,7 @@ CREATE TABLE budgets (                 -- งบรายเดือนต่�
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE admin_audit (             -- ประวัติการกระทำของผู้ดูแล ไม่ผูก FK เพื่อให้ประวัติอยู่แม้ลบบัญชี
+CREATE TABLE IF NOT EXISTS admin_audit (             -- ประวัติการกระทำของผู้ดูแล ไม่ผูก FK เพื่อให้ประวัติอยู่แม้ลบบัญชี
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   admin_id INT UNSIGNED NOT NULL,
   admin_email VARCHAR(190) NOT NULL,

@@ -48,6 +48,25 @@ final class AdminController
         );
     }
 
+    /** เจ้าของระบบ = ผู้ดูแลที่มี id ต่ำสุด (บัญชีแรกที่สมัคร) */
+    private static function isOwner(int $adminId): bool
+    {
+        $row = Db::one("SELECT MIN(id) AS id FROM users WHERE role = 'admin'");
+        return (int) ($row['id'] ?? 0) === $adminId;
+    }
+
+    /**
+     * กันผู้ดูแลยึดบัญชีกันเอง: แก้ไข รีเซ็ตรหัสผ่าน หรือลบบัญชีผู้ดูแลคนอื่นได้เฉพาะเจ้าของระบบ
+     * @param array{id:int,email:string} $admin @param array<string,mixed> $target
+     */
+    private static function protectOtherAdmins(array $admin, array $target): void
+    {
+        if ((int) $target['id'] === $admin['id'] || $target['role'] !== 'admin' || self::isOwner($admin['id'])) {
+            return;
+        }
+        throw new ApiError(403, 'admin_protected', 'แก้ไขบัญชีผู้ดูแลคนอื่นได้เฉพาะเจ้าของระบบ (ผู้ดูแลคนแรก)');
+    }
+
     /** @return array<string,mixed> */
     private static function findUser(int $id): array
     {
@@ -87,7 +106,7 @@ final class AdminController
         self::guard($adminId);
         $where = '1 = 1';
         $params = [];
-        $q = trim((string) ($_GET['q'] ?? ''));
+        $q = trim(Validator::query('q'));
         if ($q !== '') {
             $like = '%' . str_replace(['|', '%', '_'], ['||', '|%', '|_'], mb_substr($q, 0, 100)) . '%';
             $where = "(u.email LIKE ? ESCAPE '|' OR u.display_name LIKE ? ESCAPE '|')";
@@ -215,15 +234,16 @@ final class AdminController
     {
         $admin = self::guard($adminId);
         $before = self::findUser($id);
+        self::protectOtherAdmins($admin, $before);
         $body = Validator::jsonBody();
 
-        $name = array_key_exists('display_name', $body) ? trim((string) $body['display_name']) : (string) $before['display_name'];
+        $name = array_key_exists('display_name', $body) ? trim(Validator::str($body['display_name'], 'display_name')) : (string) $before['display_name'];
         if (mb_strlen($name) > 100) {
             throw Validator::fail('display_name', 'ชื่อที่แสดงยาวได้ไม่เกิน 100 ตัวอักษร');
         }
         $email = (string) $before['email'];
         if (array_key_exists('email', $body)) {
-            $email = strtolower(trim((string) $body['email']));
+            $email = strtolower(trim(Validator::str($body['email'], 'email')));
             if (strlen($email) > 190 || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
                 throw Validator::fail('email', 'รูปแบบอีเมลไม่ถูกต้อง');
             }
@@ -231,7 +251,7 @@ final class AdminController
                 throw new ApiError(409, 'email_taken', 'อีเมลนี้ถูกใช้แล้ว', ['field' => 'email']);
             }
         }
-        $role = (string) ($body['role'] ?? $before['role']);
+        $role = Validator::str($body['role'] ?? null, 'role', (string) $before['role']);
         if (!in_array($role, ['user', 'admin'], true)) {
             throw Validator::fail('role', 'สิทธิ์ต้องเป็น user หรือ admin');
         }
@@ -241,6 +261,7 @@ final class AdminController
         }
 
         Db::run('UPDATE users SET display_name = ?, email = ?, role = ? WHERE id = ?', [$name, $email, $role, $id]);
+        // เปลี่ยนอีเมลแล้ว session เดิมของผู้ใช้ทุกเครื่องหลุดเอง (Auth ผูก session กับอีเมล) ต้องเข้าสู่ระบบใหม่ด้วยอีเมลใหม่
         $after = self::findUser($id);
         $changes = [];
         foreach (['display_name', 'email', 'role'] as $f) {
@@ -272,6 +293,7 @@ final class AdminController
         if ($id === $admin['id']) {
             throw new ApiError(409, 'self_reset', 'เปลี่ยนรหัสผ่านของตัวเองที่หน้าตั้งค่าในแอป');
         }
+        self::protectOtherAdmins($admin, $user);
         $chars = self::TEMP_PASSWORD_CHARS;
         $temp = '';
         for ($i = 0; $i < 12; $i++) {
@@ -318,7 +340,8 @@ final class AdminController
         if ($id === $admin['id']) {
             throw new ApiError(409, 'self_delete', 'ลบบัญชีของตัวเองไม่ได้');
         }
-        $confirm = strtolower(trim((string) (Validator::jsonBody()['confirm_email'] ?? '')));
+        self::protectOtherAdmins($admin, $user);
+        $confirm = strtolower(trim(Validator::str(Validator::jsonBody()['confirm_email'] ?? null, 'confirm_email')));
         if ($confirm !== $user['email']) {
             throw Validator::fail('confirm_email', 'พิมพ์อีเมลของบัญชีให้ตรงเพื่อยืนยันการลบ');
         }
@@ -345,7 +368,7 @@ final class AdminController
         self::findUser($id);
         $where = ['t.user_id = ?'];
         $params = [$id];
-        $q = trim((string) ($_GET['q'] ?? ''));
+        $q = trim(Validator::query('q'));
         if ($q !== '') {
             $like = '%' . str_replace(['|', '%', '_'], ['||', '|%', '|_'], mb_substr($q, 0, 100)) . '%';
             $where[] = "(t.note LIKE ? ESCAPE '|' OR c.name LIKE ? ESCAPE '|')";
@@ -457,20 +480,23 @@ final class AdminController
         $admin = self::guard($adminId);
         $row = self::findTx($id);
         $slip = Db::one('SELECT stored_name FROM slips WHERE transaction_id = ?', [$id]);
-        Db::run('DELETE FROM transactions WHERE id = ?', [$id]);
+        // ลบและบันทึก log ใน transaction เดียว ถ้าเขียน log ไม่สำเร็จ รายการจะไม่ถูกลบ
+        Db::transaction(static function () use ($admin, $row, $slip, $id): void {
+            Db::run('DELETE FROM transactions WHERE id = ?', [$id]);
+            // เก็บสำเนาไว้ใน log เผื่อต้องเพิ่มคืนเอง
+            self::audit($admin, (int) $row['user_id'], 'delete_transaction', [
+                'transaction_id' => $id,
+                'type' => $row['type'],
+                'category' => $row['cat_name'],
+                'amount' => $row['amount'],
+                'occurred_at' => $row['occurred_at'],
+                'note' => $row['note'],
+                'had_slip' => $slip !== null,
+            ]);
+        });
         if ($slip !== null) {
             SlipController::removeFile((string) $slip['stored_name']);
         }
-        // เก็บสำเนาไว้ใน log เผื่อต้องเพิ่มคืนเอง
-        self::audit($admin, (int) $row['user_id'], 'delete_transaction', [
-            'transaction_id' => $id,
-            'type' => $row['type'],
-            'category' => $row['cat_name'],
-            'amount' => $row['amount'],
-            'occurred_at' => $row['occurred_at'],
-            'note' => $row['note'],
-            'had_slip' => $slip !== null,
-        ]);
         Response::ok(['deleted' => $id]);
     }
 
@@ -503,15 +529,15 @@ final class AdminController
             throw new ApiError(404, 'category_not_found', 'ไม่พบหมวดหมู่นี้');
         }
         $body = array_merge($before, Validator::jsonBody());
-        $name = trim((string) $body['name']);
+        $name = trim(Validator::str($body['name'], 'name'));
         if ($name === '' || mb_strlen($name) > 60) {
             throw Validator::fail('name', 'ชื่อหมวดต้องมี 1-60 ตัวอักษร');
         }
-        $icon = (string) $body['icon'];
+        $icon = Validator::str($body['icon'], 'icon');
         if (!preg_match('/^[a-z0-9-]{1,40}$/', $icon)) {
             throw Validator::fail('icon', 'ไอคอนไม่ถูกต้อง');
         }
-        $color = (string) $body['color'];
+        $color = Validator::str($body['color'], 'color');
         if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $color)) {
             throw Validator::fail('color', 'สีไม่ถูกต้อง');
         }

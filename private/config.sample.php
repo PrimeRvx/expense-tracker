@@ -14,6 +14,9 @@ return [
     // ส่ง session cookie เฉพาะผ่าน HTTPS (ตั้ง false เฉพาะตอนพัฒนาในเครื่องด้วย http เท่านั้น)
     'COOKIE_SECURE' => true,
 
+    // อยู่ในระบบได้กี่วันนับจากการใช้งานครั้งล่าสุด (1-30, ค่าเริ่มต้น 7)
+    'SESSION_DAYS' => 7,
+
     // อีเมลสำหรับรหัสยืนยัน (OTP): สมัครสมาชิก เข้าสู่ระบบด้วยรหัส และลืมรหัสผ่าน
     // MAIL_DRIVER: 'smtp' = ส่งจริง, 'log' = เขียนรหัสลง private/logs/mail.log (พัฒนาในเครื่องเท่านั้น), '' = ปิด
     // Gmail: เปิดการยืนยันสองขั้นตอน แล้วสร้าง App Password ที่ https://myaccount.google.com/apppasswords มาใส่ใน SMTP_PASS

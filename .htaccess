@@ -15,6 +15,9 @@ RewriteRule ^index\.html$ index.php [L]
 # เอกสารและไฟล์สำรองไม่ใช่ส่วนของหน้าเว็บ ห้ามเปิดจากภายนอก
 RewriteRule \.md$ - [F,L,NC]
 RewriteRule ^_backup - [F,L,NC]
+# ไฟล์ที่ Claude สร้างให้, ไฟล์บีบอัด, SQL, log และไฟล์สำรอง ห้ามดาวน์โหลดจากภายนอก
+RewriteRule ^Claude\ outputs - [F,L,NC]
+RewriteRule \.(zip|rar|7z|tar|gz|sql|log|bak|old|orig|swp|env|ini|sh|ps1|bat)$ - [F,L,NC]
 
 # ปิดโฟลเดอร์ private กรณีที่จำเป็นต้องวางไว้ใน public_html
 RewriteRule ^private(/|$) - [F,L]
@@ -44,6 +47,11 @@ RewriteRule ^ index.php [L]
   <If "%{REQUEST_URI} =~ m#/assets/#">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </If>
+</IfModule>
+
+<IfModule mod_deflate.c>
+  # บีบอัดไฟล์ข้อความก่อนส่ง ลดขนาด JS/CSS/JSON ที่ดาวน์โหลดลงมาก
+  AddOutputFilterByType DEFLATE text/html text/css text/plain text/javascript application/javascript application/json application/manifest+json image/svg+xml
 </IfModule>
 
 <IfModule mod_mime.c>

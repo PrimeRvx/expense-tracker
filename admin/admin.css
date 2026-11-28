@@ -90,7 +90,7 @@ label { display: grid; gap: .3rem; font-size: .88rem; color: var(--ink-2); font-
 .badge-ok { background: var(--income-bg); color: var(--income-ink); }
 
 .content { min-width: 0; display: grid; gap: 1.25rem; align-content: start; }
-.panel { padding: 1.25rem; }
+.panel { padding: 1.25rem; min-width: 0; }
 .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
 .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 
@@ -137,7 +137,11 @@ dialog::backdrop { background: rgba(15, 23, 42, .45); }
 .empty { padding: 2rem; text-align: center; color: var(--ink-3); }
 
 @media (max-width: 860px) {
-  .layout { grid-template-columns: 1fr; padding: .75rem; }
+  /* minmax(0, 1fr) ไม่ให้ตารางหรือแท็บที่กว้างดันคอลัมน์จนล้นจอ (ให้เลื่อนในกล่องของตัวเองแทน) */
+  .layout { grid-template-columns: minmax(0, 1fr); padding: .75rem; }
+  .panel { padding: 1rem; min-width: 0; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat .value { font-size: 1.1rem; overflow-wrap: anywhere; }
   .sidebar { position: static; max-height: 340px; }
   .filters { grid-template-columns: 1fr 1fr; }
   .topbar-right .muted { display: none; }

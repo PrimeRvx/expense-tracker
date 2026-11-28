@@ -54,6 +54,24 @@ final class Db
         return (int) self::pdo()->lastInsertId();
     }
 
+    /**
+     * รัน $fn ตามปกติ ถ้าตารางยังไม่มี (เว็บที่อัปเดตจากเวอร์ชันเก่าโดยไม่ได้ import SQL) ให้ $create สร้างตารางแล้วลองใหม่ครั้งเดียว
+     * จึงไม่ต้องรันคำสั่ง CREATE TABLE ทุก request
+     * @template T @param callable():void $create @param callable():T $fn @return T
+     */
+    public static function withTable(callable $create, callable $fn)
+    {
+        try {
+            return $fn();
+        } catch (PDOException $e) {
+            if ($e->getCode() !== '42S02') {
+                throw $e;
+            }
+            $create();
+            return $fn();
+        }
+    }
+
     /** @template T @param callable():T $fn @return T */
     public static function transaction(callable $fn)
     {
